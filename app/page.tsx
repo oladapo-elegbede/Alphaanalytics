@@ -38,7 +38,7 @@ export default function Dashboard() {
 
   // BACKEND & PAYSTACK KEYS
   const BACKEND_URL = "https://alpha-analytics-backend.onrender.com";
-  const PAYSTACK_PUBLIC_KEY = "pk_live_YOUR_KEY_HERE";
+  const PAYSTACK_PUBLIC_KEY = "pk_live_0f0592415bcf879e8b2393f61e15634c3a0b37ee";
 
   useEffect(() => {
     const script = document.createElement("script");
