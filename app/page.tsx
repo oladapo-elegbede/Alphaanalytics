@@ -54,7 +54,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchAnalytics() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/v1/fixtures/analyzed");
+        const res = await fetch("https://alpha-analytics-backend.onrender.com");
         if (res.ok) {
           const data: MatchFixture[] = await res.json();
           setFixtures(data);
