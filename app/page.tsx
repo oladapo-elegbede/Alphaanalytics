@@ -39,8 +39,11 @@ export default function Dashboard() {
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>("");
 
-  // PAYSTACK PUBLIC KEY (Replace with your actual pk_test or pk_live key from Paystack)
-  const PAYSTACK_PUBLIC_KEY = "pk_test_66929967688a491c2d7836f7f053adcf7acc5d8e";
+  // YOUR LIVE PAYSTACK PUBLIC KEY
+  const PAYSTACK_PUBLIC_KEY = "pk_live_0f0592415bcf879e8b2393f61e15634c3a0b37ee";
+
+  // YOUR ACTUAL RENDER BACKEND URL
+  const LIVE_BACKEND_URL = "https://alpha-analytics-backend.onrender.com/api/v1/fixtures/analyzed";
 
   // Load Paystack Inline JS Script dynamically
   useEffect(() => {
@@ -50,27 +53,75 @@ export default function Dashboard() {
     document.body.appendChild(script);
   }, []);
 
-  // --- FETCH DATA FROM FASTAPI BACKEND ---
+  // --- SAFE FETCH FROM FASTAPI BACKEND ---
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchAnalytics() {
       try {
-        const res = await fetch("https://alpha-analytics-backend.onrender.com");
+        const res = await fetch(LIVE_BACKEND_URL);
         if (res.ok) {
           const data: MatchFixture[] = await res.json();
-          setFixtures(data);
-          setApiConnected(true);
+          if (isMounted) {
+            setFixtures(data);
+            setApiConnected(true);
+          }
         } else {
-          setApiConnected(false);
+          if (isMounted) setApiConnected(false);
         }
       } catch (err) {
-        console.warn("Backend API offline.", err);
-        setApiConnected(false);
+        console.warn("Backend warming up or offline. Using resilient fallback feed...", err);
+        if (isMounted) {
+          setApiConnected(false);
+          // Fallback UI State so page NEVER crashes
+          setFixtures([
+            {
+              fixture_id: "LIVE-2026-MLS",
+              match: "Chicago Fire FC vs Vancouver Whitecaps",
+              league: "MLS",
+              kickoff: "00:30 WAT",
+              xg_ratings: { home: 1.59, away: 1.7 },
+              market_probabilities: {
+                home_win: 36.04,
+                draw: 23.03,
+                away_win: 40.62,
+                over_1_5: 83.7,
+                over_2_5: 63.54,
+                btts_yes: 64.81,
+              },
+              line_discrepancies: {
+                away_win: {
+                  max_odds: 4.25,
+                  best_bookmaker: "1xBet",
+                  market_average: 3.1,
+                  discrepancy_percent: 37.1,
+                  is_lopsided: true,
+                },
+              },
+              ev_signals: [
+                {
+                  market: "away_win",
+                  model_probability: 40.62,
+                  fair_odds: 2.46,
+                  bookmaker_odds: 4.25,
+                  ev_percent: 72.63,
+                  is_positive_ev: true,
+                  signal_status: "🚀 HIGH +EV SIGNAL",
+                },
+              ],
+            },
+          ]);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
 
     fetchAnalytics();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // --- PAYSTACK PAYMENT POPUP TRIGGER ---
@@ -83,7 +134,7 @@ export default function Dashboard() {
     setUserEmail(email);
 
     // @ts-ignore Paystack Pop script
-    if (typeof window.PaystackPop !== "undefined") {
+    if (typeof window !== "undefined" && window.PaystackPop) {
       // @ts-ignore
       const handler = window.PaystackPop.setup({
         key: PAYSTACK_PUBLIC_KEY,
@@ -91,15 +142,6 @@ export default function Dashboard() {
         amount: 10000 * 100, // ₦10,000 in Kobo
         currency: "NGN",
         ref: "ALPHA_" + Math.floor(Math.random() * 1000000000 + 1),
-        metadata: {
-          custom_fields: [
-            {
-              display_name: "Subscription Plan",
-              variable_name: "plan",
-              value: "Alpha Analytics Pro Monthly (₦10,000)",
-            },
-          ],
-        },
         callback: function (response: { reference: string }) {
           alert(`🎉 Payment Successful! Reference: ${response.reference}. Pro Terminal Unlocked!`);
           setIsSubscribed(true);
@@ -110,7 +152,7 @@ export default function Dashboard() {
       });
       handler.openIframe();
     } else {
-      alert("Paystack SDK is loading. Please try again in 3 seconds.");
+      alert("Paystack is initializing. Please click again in 2 seconds.");
     }
   };
 
@@ -132,7 +174,7 @@ export default function Dashboard() {
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2 text-xs font-mono px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800">
             <span className={`h-2 w-2 rounded-full ${apiConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}></span>
-            <span className="text-slate-400">{apiConnected ? "FASTAPI CONNECTED" : "DEMO FEED MODE"}</span>
+            <span className="text-slate-400">{apiConnected ? "FASTAPI LIVE" : "DEMO FEED MODE"}</span>
           </div>
 
           <button
@@ -237,7 +279,7 @@ export default function Dashboard() {
                           </p>
                           <button
                             onClick={handlePaystackCheckout}
-                            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded text-xs transition-all"
+                            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded text-xs transition-all shadow-lg"
                           >
                             Unlock Signals for ₦10,000/mo
                           </button>
