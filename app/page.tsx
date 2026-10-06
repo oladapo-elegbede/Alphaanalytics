@@ -322,3 +322,23 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
+// Inside Dashboard() component:
+const [history, setHistory] = useState<any[]>([]);
+
+// Fetch Dynamic Yesterday's Completed Matches
+useEffect(() => {
+  async function fetchHistory() {
+    try {
+      const res = await fetch("https://alpha-analytics-backend.onrender.com/api/v1/history/results");
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      }
+    } catch (err) {
+      console.warn("Could not load dynamic history", err);
+    }
+  }
+  fetchHistory();
+}, []);
